@@ -115,6 +115,63 @@ def dividends_in_period(dividends_df: pd.DataFrame, ticker: str, start: pd.Times
     return mask.any()
 
 
+def calculate_total_dividends(dividends_df: pd.DataFrame, ticker: str, start: pd.Timestamp, end: pd.Timestamp) -> float:
+    """保有期間中の配当金の合計を計算する(1株あたり)"""
+    if dividends_df is None:
+        return 0.0
+    df = dividends_df.copy()
+    if "date" in df.columns:
+        s = pd.to_datetime(df["date"], errors="coerce")
+        try:
+            if s.dt.tz is not None:
+                s = s.dt.tz_convert(None)
+        except Exception:
+            pass
+        df["date"] = s.dt.normalize()
+        date_col = "date"
+    else:
+        df.index = pd.to_datetime(df.index).normalize()
+        df = df.reset_index().rename(columns={"index": "date"})
+        date_col = "date"
+
+    if "ticker" in df.columns:
+        df = df[df["ticker"] == ticker]
+
+    # start/end をナイーブな正規化された Timestamp に揃える
+    start_ts = pd.to_datetime(start).normalize()
+    end_ts = pd.to_datetime(end).normalize()
+    try:
+        if getattr(start_ts, 'tz', None) is not None:
+            start_ts = start_ts.tz_convert(None)
+    except Exception:
+        pass
+    try:
+        if getattr(end_ts, 'tz', None) is not None:
+            end_ts = end_ts.tz_convert(None)
+    except Exception:
+        pass
+
+    mask = (df[date_col] >= start_ts) & (df[date_col] <= end_ts)
+    filtered_df = df[mask]
+
+    # 配当列を探す("dividend", "dividends", "div" など複数の名前に対応)
+    div_col = None
+    for col in ["dividend", "dividends", "div", "value"]:
+        if col in filtered_df.columns:
+            div_col = col
+            break
+    
+    if div_col is None:
+        return 0.0
+
+    try:
+        total_div = float(filtered_df[div_col].sum())
+    except Exception:
+        return 0.0
+
+    return total_div
+
+
 def _find_column_for_ticker(df: pd.DataFrame, ticker: str) -> str:
     """与えられたティッカー文字列からDataFrameの列名を柔軟に探索して返す。
 
