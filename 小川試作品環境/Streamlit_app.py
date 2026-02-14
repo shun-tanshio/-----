@@ -195,6 +195,62 @@ def main():
         hide_index=True,
     )
 
+    st.subheader("🎤 音声入力テスト")
+
+    from streamlit.components.v1 import html
+
+    html("""
+    <div>
+        <button onclick="startDictation()" style="padding:10px 20px;font-size:16px;">
+            🎤 音声入力開始
+        </button>
+        <p id="result" style="margin-top:15px;font-weight:bold;"></p>
+    </div>
+         
+    <script>
+    function startDictation() {
+
+        if (!('webkitSpeechRecognition' in window)) {
+            alert("このブラウザは音声認識に対応していません（Chrome推奨）");
+            return;
+        }
+
+        var recognition = new webkitSpeechRecognition();
+        recognition.lang = "ja-JP";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = function(event) {
+            var text = event.results[0][0].transcript;
+
+            // 4桁数字を抽出（単語境界なし）
+            var match = text.match(/\d{4}/);
+
+            if (match) {
+                document.getElementById("result").innerHTML =
+                    "認識: " + text +
+                    "<br><span style='font-size:20px;font-weight:bold;'>" +
+                    "抽出コード: " + match[0] +
+                    "</span>";
+            } else {
+                document.getElementById("result").innerText =
+                    "認識: " + text + "（4桁コードなし）";
+            }
+        };
+
+        recognition.onerror = function(event) {
+            document.getElementById("result").innerText =
+                "エラー: " + event.error;
+        };
+
+        recognition.start();
+    }
+    </script>
+
+
+    """, height=200)
+
+
 
 
 if __name__ == "__main__":
